@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using BepInEx;
+﻿using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace YardiksValheimMod
 {
-    [BepInPlugin("yardik.SnapPointsMadeEasy", "Snap Points Made Easy", "1.1.2")]
+    [BepInPlugin("yardik.SnapPointsMadeEasy", "Snap Points Made Easy", "1.2.0")]
     public class SnapMod : BaseUnityPlugin
     {
         private static SnapMod context;
@@ -20,7 +20,9 @@ namespace YardiksValheimMod
             modEnabled = Config.Bind("General", "Enabled", true, "Enable this mod");
             ValheimSnapMod.Settings.Init(Config);
             if (!modEnabled.Value)
+            {
                 return;
+            }
 
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
@@ -36,15 +38,15 @@ namespace YardiksValheimMod
         }
 
         [HarmonyPatch(typeof(Player), "UpdatePlacementGhost")]
-        static class UpdatePlacementGhost_Patch
+        private static class UpdatePlacementGhost_Patch
         {
-            static bool modifiedPlacementToggled = false;
+            private static bool modifiedPlacementToggled = false;
             private static int currentSourceSnap = 0;
             private static int currentDestinationSnap = 0;
             private static Transform currentDestinationParent;
             private static Transform currentSourceParent;
 
-            static void Postfix(Player __instance,
+            private static void Postfix(Player __instance,
                 GameObject ___m_placementGhost)
             {
                 if (Input.GetKeyDown(ValheimSnapMod.Settings.SnapSettings.EnableModKey.Value))
@@ -53,30 +55,41 @@ namespace YardiksValheimMod
                 }
 
                 if (___m_placementGhost == null)
+                {
                     return;
+                }
 
                 var sourcePiece = ___m_placementGhost.GetComponent<Piece>();
                 if (sourcePiece == null)
+                {
                     return;
+                }
 
-                Piece targetPiece = null;
-                if (!(targetPiece = RayTest(__instance, ___m_placementGhost))) return;
-                if (targetPiece == null)
+                Piece targetPiece = RayTest(__instance, ___m_placementGhost);
+                if (!targetPiece)
+                {
                     return;
+                } 
 
                 if (modifiedPlacementToggled)
                 {
                     if (currentDestinationParent != targetPiece.transform)
                     {
                         if (ValheimSnapMod.Settings.SnapSettings.ResetSnapsOnChangePiece.Value || currentDestinationSnap < 0)
+                        {
                             currentDestinationSnap = 0;
+                        }
+
                         currentDestinationParent = targetPiece.transform;
                     }
 
                     if (currentSourceParent != sourcePiece.transform)
                     {
                         if (ValheimSnapMod.Settings.SnapSettings.ResetSnapsOnChangePiece.Value || currentSourceSnap < 0)
+                        {
                             currentSourceSnap = 0;
+                        }
+
                         currentSourceParent = sourcePiece.transform;
                     }
 
@@ -94,13 +107,18 @@ namespace YardiksValheimMod
                     var destSnapPoints = GetSnapPoints(currentDestinationParent);
 
                     if (currentSourceSnap >= sourceSnapPoints.Count)
+                    {
                         currentSourceSnap = 0;
+                    }
+
                     if (currentDestinationSnap >= destSnapPoints.Count)
+                    {
                         currentDestinationSnap = 0;
+                    }
 
                     var a = sourceSnapPoints[currentSourceSnap];
                     var b = destSnapPoints[currentDestinationSnap];
-                    var position = b.position;
+                    
                     var p = b.position - (a.position - ___m_placementGhost.transform.position);
                     ___m_placementGhost.transform.position = p;
                 }
@@ -110,26 +128,25 @@ namespace YardiksValheimMod
             {
                 var component1 = placementGhost.GetComponent<Piece>();
                 var water = component1.m_waterPiece || component1.m_noInWater;
-                Vector3 point;
-                Vector3 normal;
-                Piece piece;
-                Heightmap heightmap;
-                Collider waterSurface;
-                HookPieceRayTest.call_PieceRayTest(player, out point, out normal, out piece, out heightmap,
-                    out waterSurface, water);
+                HookPieceRayTest.call_PieceRayTest(player, out Vector3 point, out Vector3 normal, out Piece piece, out Heightmap heightmap, out Collider waterSurface, water);
                 return piece;
             }
 
             public static List<Transform> GetSnapPoints(Transform piece)
             {
                 List<Transform> points = new List<Transform>();
-                if (piece == null) return points;
+                if (piece == null)
+                {
+                    return points;
+                }
 
                 for (var index = 0; index < piece.childCount; ++index)
                 {
                     var child = piece.GetChild(index);
                     if (child.CompareTag("snappoint"))
+                    {
                         points.Add(child);
+                    }
                 }
 
                 points.Add(piece.transform);
